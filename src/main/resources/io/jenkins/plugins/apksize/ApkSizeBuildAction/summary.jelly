@@ -49,4 +49,21 @@
         </tr>
     </j:if>
 
+    <!-- Trend chart widget -->
+    <j:if test="${it.hasApk() or it.hasIpa()}">
+        <tr>
+            <td class="pane-header" colspan="2" style="border-top:1px solid #eee;padding-top:8px">
+                Size Trend
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding:0">
+                <iframe src="${rootURL}${it.build.parent.url}apkSizeTrend/widget"
+                        width="100%" height="280" frameborder="0" scrolling="no"
+                        style="display:block;border:none;overflow:hidden">
+                </iframe>
+            </td>
+        </tr>
+    </j:if>
+
 </j:jelly>

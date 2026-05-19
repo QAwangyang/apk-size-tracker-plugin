@@ -218,6 +218,88 @@ public class ApkSizeTrendAction implements Action {
         rsp.getWriter().print(html.toString());
     }
 
+    // ---- Compact chart widget for embedding in build page summary ----
+
+    public void doWidget(StaplerRequest req, StaplerResponse rsp) throws Exception {
+        rsp.setContentType("text/html;charset=UTF-8");
+
+        String json = buildTrendJson();
+
+        // Inline echarts from classpath
+        String echartsJs = "";
+        try (var is = getClass().getResourceAsStream("/js/echarts.min.js")) {
+            if (is != null) {
+                echartsJs = new String(is.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
+        } catch (Exception e) {
+            LOGGER.warning("Failed to inline echarts: " + e.getMessage());
+        }
+
+        var html = new StringBuilder(4096);
+        html.append("<!DOCTYPE html><html><head>");
+        html.append("<meta charset=\"UTF-8\">");
+        html.append("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
+        html.append("<style>");
+        html.append("*{margin:0;padding:0;box-sizing:border-box}");
+        html.append("body{background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}");
+        html.append("#chart{width:100%;height:260px}");
+        html.append(".no-data{text-align:center;padding:60px 20px;color:#999;font-size:14px}");
+        html.append(".loading{text-align:center;padding:60px 20px;color:#999;font-size:13px}");
+        html.append("</style>");
+        if (!echartsJs.isEmpty()) {
+            html.append("<script>").append(echartsJs).append("</script>");
+        }
+        html.append("</head><body>");
+
+        html.append("<div id=\"noData\" class=\"no-data\" style=\"display:none\">No data</div>");
+        html.append("<div id=\"loadingMsg\" class=\"loading\">Loading...</div>");
+        html.append("<div id=\"chart\" style=\"display:none\"></div>");
+
+        html.append("<script>");
+        html.append("var chartData = ").append(json).append(";\n");
+        html.append("function init(){\n");
+        html.append("document.getElementById('loadingMsg').style.display='none';\n");
+        html.append("var d=chartData;\n");
+        html.append("var hasApk=d.apk&&d.apk.buildNumbers&&d.apk.buildNumbers.length>0;\n");
+        html.append("var hasIpa=d.ipa&&d.ipa.buildNumbers&&d.ipa.buildNumbers.length>0;\n");
+        html.append("if(!hasApk&&!hasIpa){document.getElementById('noData').style.display='block';return;}\n");
+        html.append("document.getElementById('chart').style.display='block';\n");
+        html.append("var allBns=hasApk?d.apk.buildNumbers:d.ipa.buildNumbers;\n");
+        html.append("var legend=[],series=[];\n");
+        // APK
+        html.append("if(hasApk){legend.push('APK');");
+        html.append("series.push({name:'APK',type:'line',smooth:true,");
+        html.append("symbol:'circle',symbolSize:4,lineStyle:{width:1.5,color:'#0099ff'},");
+        html.append("itemStyle:{color:'#0099ff'},");
+        html.append("areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(0,153,255,0.25)'},{offset:1,color:'rgba(0,153,255,0.02)'}])},");
+        html.append("data:d.apk.sizesMb.map(Number)});}\n");
+        // IPA
+        html.append("if(hasIpa){legend.push('IPA');");
+        html.append("series.push({name:'IPA',type:'line',smooth:true,");
+        html.append("symbol:'diamond',symbolSize:4,lineStyle:{width:1.5,color:'#ff6600'},");
+        html.append("itemStyle:{color:'#ff6600'},");
+        html.append("areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,102,0,0.25)'},{offset:1,color:'rgba(255,102,0,0.02)'}])},");
+        html.append("data:d.ipa.sizesMb.map(Number)});}\n");
+        // Chart
+        html.append("var chart=echarts.init(document.getElementById('chart'));\n");
+        html.append("chart.setOption({\n");
+        html.append("tooltip:{trigger:'axis',formatter:function(p){var r='Build <b>#'+allBns[p[0].dataIndex]+'</b><br/>';");
+        html.append("p.forEach(function(pp){r+=pp.marker+' '+pp.seriesName+': <b>'+Number(pp.value).toFixed(2)+' MB</b><br/>';});return r;}},\n");
+        html.append("legend:{data:legend,show:true,bottom:2,icon:'circle',itemWidth:8,itemHeight:8,textStyle:{fontSize:11}},\n");
+        html.append("grid:{left:35,right:10,top:20,bottom:30},\n");
+        html.append("xAxis:{type:'category',data:allBns,axisLabel:{fontSize:10,rotate:30}},\n");
+        html.append("yAxis:{name:'MB',nameTextStyle:{fontSize:10},type:'value',axisLabel:{fontSize:10}},\n");
+        html.append("series:series\n");
+        html.append("});\n");
+        html.append("window.addEventListener('resize',function(){chart.resize();});\n");
+        html.append("}\n");
+        html.append("if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init)}else{init()}\n");
+        html.append("</script>");
+
+        html.append("</body></html>");
+        rsp.getWriter().print(html.toString());
+    }
+
     // ---- JSON data API ----
 
     public void doData(StaplerRequest req, StaplerResponse rsp) throws Exception {
