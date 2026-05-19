@@ -242,15 +242,20 @@ public class ApkSizeTrendAction implements Action {
         html.append("<style>");
         html.append("*{margin:0;padding:0;box-sizing:border-box}");
         html.append("body{background:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden}");
-        html.append("#chart{width:100%;height:260px}");
+        html.append("#chart{width:100%;height:240px}");
         html.append(".no-data{text-align:center;padding:60px 20px;color:#999;font-size:14px}");
         html.append(".loading{text-align:center;padding:60px 20px;color:#999;font-size:13px}");
+        html.append(".diff-bar{font-size:12px;padding:6px 10px 2px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}");
+        html.append(".diff-bar .up{color:#cc3333}");
+        html.append(".diff-bar .down{color:#339933}");
+        html.append(".diff-bar .sep{color:#ddd;margin:0 6px}");
         html.append("</style>");
         if (!echartsJs.isEmpty()) {
             html.append("<script>").append(echartsJs).append("</script>");
         }
         html.append("</head><body>");
 
+        html.append("<div id=\"diffBar\" class=\"diff-bar\"></div>");
         html.append("<div id=\"noData\" class=\"no-data\" style=\"display:none\">No data</div>");
         html.append("<div id=\"loadingMsg\" class=\"loading\">Loading...</div>");
         html.append("<div id=\"chart\" style=\"display:none\"></div>");
@@ -266,6 +271,13 @@ public class ApkSizeTrendAction implements Action {
         html.append("document.getElementById('chart').style.display='block';\n");
         html.append("var allBns=hasApk?d.apk.buildNumbers:d.ipa.buildNumbers;\n");
         html.append("var legend=[],series=[];\n");
+
+        // Diff banner
+        html.append("var db=document.getElementById('diffBar');var dh='';\n");
+        html.append("if(d.diff&&d.diff.apk){var a=d.diff.apk;var s=a.diffMb>0?'<span class=\"up\">+'+a.diffMb.toFixed(2)+'MB</span>':a.diffMb<0?'<span class=\"down\">'+a.diffMb.toFixed(2)+'MB</span>':'0MB';dh+='APK #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
+        html.append("if(d.diff&&d.diff.ipa){if(dh)dh+='<span class=\"sep\">|</span>';var a=d.diff.ipa;dh+='IPA #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
+        html.append("db.innerHTML=dh;\n");
+
         // APK
         html.append("if(hasApk){legend.push('APK');");
         html.append("series.push({name:'APK',type:'line',smooth:true,");
