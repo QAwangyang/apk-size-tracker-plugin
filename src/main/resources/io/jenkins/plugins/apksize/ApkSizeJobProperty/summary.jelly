@@ -1,22 +1,65 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
-    <tr>
-        <td class="pane-header" colspan="2">
-            <img src="${rootURL}/plugin/apk-size-tracker/icons/chart-icon.svg"
-                 width="16" height="16"
-                 style="vertical-align:middle;margin-right:4px"
-                 alt="chart"/>
-            APK/IPA Size Trend
-        </td>
-    </tr>
-    <tr>
-        <td colspan="2" style="padding:4px">
-            <iframe src="apkSizeTrend/widget"
-                    width="100%" height="280" frameborder="0" scrolling="no"
-                    style="display:block;border:none;overflow:hidden;border-radius:4px">
-            </iframe>
-        </td>
-    </tr>
+    <!-- Render chart in-place, JS will move below "Last Successful Artifacts" -->
+    <div id="apk-trend-chart" style="display:none">
+        <table style="width:100%">
+            <tr>
+                <td class="pane-header" colspan="2">
+                    <img src="${rootURL}/plugin/apk-size-tracker/icons/chart-icon.svg"
+                         width="16" height="16"
+                         style="vertical-align:middle;margin-right:4px" alt="chart"/>
+                    APK/IPA Size Trend
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding:4px">
+                    <iframe src="apkSizeTrend/widget"
+                            width="100%" height="280" frameborder="0" scrolling="no"
+                            style="display:block;border:none;overflow:hidden;border-radius:4px">
+                    </iframe>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+    (function() {
+        function moveChart() {
+            var chartDiv = document.getElementById('apk-trend-chart');
+            if (!chartDiv) return;
+
+            // Find "Last Successful Artifacts" link
+            var artLink = document.querySelector('a[href*="/artifact/"]');
+            if (!artLink) {
+                // No artifacts — show chart in-place
+                chartDiv.style.display = '';
+                return;
+            }
+
+            // Get the outer artifacts table
+            var artTable = artLink.closest('table');
+            if (!artTable || !artTable.parentNode) {
+                chartDiv.style.display = '';
+                return;
+            }
+
+            var parent = artTable.parentNode;
+
+            // Prevent infinite loop — check if already moved
+            if (parent.contains(chartDiv)) return;
+
+            // Insert chart after artifacts table
+            parent.insertBefore(chartDiv, artTable.nextSibling);
+            chartDiv.style.display = '';
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', moveChart);
+        } else {
+            setTimeout(moveChart, 50);
+        }
+    })();
+    </script>
 
 </j:jelly>
