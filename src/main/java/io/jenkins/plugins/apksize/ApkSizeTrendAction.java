@@ -245,7 +245,7 @@ public class ApkSizeTrendAction implements Action {
         html.append("#chart{width:100%;height:240px}");
         html.append(".no-data{text-align:center;padding:60px 20px;color:#999;font-size:14px}");
         html.append(".loading{text-align:center;padding:60px 20px;color:#999;font-size:13px}");
-        html.append(".diff-bar{font-size:12px;padding:6px 10px 2px;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}");
+        html.append(".diff-bar{font-size:16px;font-weight:600;padding:6px 10px 2px;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}");
         html.append(".diff-bar .up{color:#cc3333}");
         html.append(".diff-bar .down{color:#339933}");
         html.append(".diff-bar .sep{color:#ddd;margin:0 6px}");
