@@ -5,6 +5,7 @@ import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
+import hudson.model.Job;
 import hudson.model.Run;
 import hudson.model.TaskListener;
 import hudson.tasks.BuildStepDescriptor;
@@ -92,10 +93,22 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
         LOGGER.fine("ApkSizeBuildAction added to build #" + run.getNumber());
 
         // Persist to data file for fast retrieval on Trend page
+        Job<?, ?> job = run.getParent();
         ApkSizeDataStore.appendBuild(
-            run.getParent(), run.getNumber(),
+            job, run.getNumber(),
             apkSizeBytes, ipaSizeBytes, run.getDuration());
         LOGGER.fine("ApkSizeDataStore updated for build #" + run.getNumber());
+
+        // Auto-attach ApkSizeJobProperty so the trend chart shows on project page
+        if (job.getProperty(ApkSizeJobProperty.class) == null) {
+            try {
+                job.addProperty(new ApkSizeJobProperty());
+                job.save();
+                LOGGER.fine("ApkSizeJobProperty auto-attached to " + job.getFullName());
+            } catch (Exception e) {
+                LOGGER.warning("Failed to auto-attach ApkSizeJobProperty: " + e.getMessage());
+            }
+        }
 
         if (apkSizeBytes < 0 && ipaSizeBytes < 0) {
             listener.getLogger().println("[APK Size Tracker] ⚠ WARNING: No APK/IPA found. Ensure 'Archive artifacts' runs before this step.");
