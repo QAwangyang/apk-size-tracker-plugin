@@ -1,0 +1,71 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>plugin</artifactId>
+        <version>4.88</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>io.jenkins.plugins</groupId>
+    <artifactId>apk-size-tracker</artifactId>
+    <version>1.2.1</version>
+    <packaging>hpi</packaging>
+
+    <name>APK Size Tracker</name>
+    <description>Tracks APK/IPA build artifact sizes and displays ECharts trend charts with diff comparison against previous builds</description>
+    <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:https://github.com/YOUR_USERNAME/apk-size-tracker-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:YOUR_USERNAME/apk-size-tracker-plugin.git</developerConnection>
+        <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin</url>
+        <tag>HEAD</tag>
+    </scm>
+
+    <issueManagement>
+        <system>GitHub Issues</system>
+        <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin/issues</url>
+    </issueManagement>
+
+    <properties>
+        <jenkins.version>2.479.3</jenkins.version>
+        <java.level>17</java.level>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <repositories>
+        <repository>
+            <id>jenkins-ci-public</id>
+            <url>https://repo.jenkins-ci.org/public</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>jenkins-ci-public</id>
+            <url>https://repo.jenkins-ci.org/public</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <version>5.0.0</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+</project>

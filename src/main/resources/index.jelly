@@ -1,0 +1,6 @@
+<?jelly escape-by-default='true'?>
+<div>
+    Automatically tracks APK/IPA file sizes after each build and displays
+    an interactive trend chart using ECharts. Supports both Freestyle projects
+    and Pipeline.
+</div>

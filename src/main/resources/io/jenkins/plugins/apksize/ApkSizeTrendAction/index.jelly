@@ -1,0 +1,143 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout">
+    <l:layout title="APK/IPA Size Trend">
+        <l:header>
+            <script src="https://cdn.staticfile.net/echarts/5.4.3/echarts.min.js"></script>
+        </l:header>
+        <l:main-panel>
+            <h1 style="margin:0 0 4px 0;">APK/IPA Size Trend</h1>
+            <p style="margin:0 0 20px 0;color:#999;font-size:13px;">
+                Project: ${it.job.displayName}
+                <span id="updateInfo" style="margin-left:20px;"></span>
+            </p>
+
+            <div id="chart" style="width:100%;height:500px;display:none;"></div>
+            <div id="noData" style="text-align:center;padding:60px;color:#999;display:none;">
+                No data yet. Run a build with "Track APK/IPA Size" configured.
+            </div>
+            <div id="dataTable" style="margin-top:16px;"></div>
+        </l:main-panel>
+    </l:layout>
+
+    <script>
+        fetch('data')
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                renderChart(data);
+            })
+            .catch(function(e) {
+                document.getElementById('noData').style.display = 'block';
+                document.getElementById('noData').textContent = 'Failed to load data: ' + e.message;
+            });
+
+        function renderChart(data) {
+            document.getElementById('updateInfo').textContent = 'Last updated: ' + (data.lastUpdated || '-');
+
+            var hasApk = data.apk && data.apk.buildNumbers && data.apk.buildNumbers.length > 0;
+            var hasIpa = data.ipa && data.ipa.buildNumbers && data.ipa.buildNumbers.length > 0;
+
+            if (!hasApk && !hasIpa) {
+                document.getElementById('noData').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('chart').style.display = 'block';
+
+            var series = [];
+            var legendData = [];
+            var buildNumbers = [];
+
+            if (hasApk) {
+                buildNumbers = data.apk.buildNumbers;
+                legendData.push('APK Size');
+                series.push({
+                    name: 'APK Size', type: 'line', smooth: true,
+                    symbol: 'circle', symbolSize: 6,
+                    lineStyle: { width: 2, color: '#0099ff' },
+                    itemStyle: { color: '#0099ff' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0,153,255,0.3)' },
+                            { offset: 1, color: 'rgba(0,153,255,0.05)' }
+                        ])
+                    },
+                    data: data.apk.sizesMb.map(Number)
+                });
+            }
+
+            if (hasIpa) {
+                if (!hasApk) buildNumbers = data.ipa.buildNumbers;
+                legendData.push('IPA Size');
+                series.push({
+                    name: 'IPA Size', type: 'line', smooth: true,
+                    symbol: 'diamond', symbolSize: 6,
+                    lineStyle: { width: 2, color: '#ff6600' },
+                    itemStyle: { color: '#ff6600' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(255,102,0,0.3)' },
+                            { offset: 1, color: 'rgba(255,102,0,0.05)' }
+                        ])
+                    },
+                    data: data.ipa.sizesMb.map(Number)
+                });
+            }
+
+            var chart = echarts.init(document.getElementById('chart'));
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        var idx = params[0].dataIndex;
+                        var r = 'Build: <b>#' + buildNumbers[idx] + '</b><br/>';
+                        params.forEach(function(p) {
+                            r += p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value).toFixed(2) + ' MB</b><br/>';
+                        });
+                        return r;
+                    }
+                },
+                legend: { data: legendData, bottom: 10 },
+                grid: { left: 60, right: 30, top: 40, bottom: 50 },
+                xAxis: { name: 'Build #', type: 'category', data: buildNumbers, axisLabel: { rotate: 45, fontSize: 10 } },
+                yAxis: { name: 'Size (MB)', type: 'value' },
+                toolbox: {
+                    feature: {
+                        dataZoom: { yAxisIndex: 'none' },
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                dataZoom: [{ type: 'inside', start: 0, end: 100 }, { start: 0, end: 100, handleSize: '80%' }],
+                series: series
+            });
+            window.addEventListener('resize', function() { chart.resize(); });
+
+            // Data table
+            var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
+                '<tr style="background:#f8f9fa;">' +
+                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">Build #</th>' +
+                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">APK (MB)</th>' +
+                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">IPA (MB)</th>';
+            if (hasApk && data.apk.timestamps && data.apk.timestamps.length) {
+                html += '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">Timestamp</th>';
+            }
+            html += '</tr>';
+
+            for (var i = 0; i < buildNumbers.length; i++) {
+                html += '<tr>';
+                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;"><b>#' + buildNumbers[i] + '</b></td>';
+                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (hasApk && data.apk.sizesMb[i] ? Number(data.apk.sizesMb[i]).toFixed(2) : '-') + '</td>';
+                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (hasIpa && data.ipa.sizesMb[i] ? Number(data.ipa.sizesMb[i]).toFixed(2) : '-') + '</td>';
+                if (hasApk && data.apk.timestamps && data.apk.timestamps.length) {
+                    html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (data.apk.timestamps[i] || '') + '</td>';
+                }
+                html += '</tr>';
+            }
+            html += '</table>';
+            document.getElementById('dataTable').innerHTML = html;
+        }
+    </script>
+</j:jelly>

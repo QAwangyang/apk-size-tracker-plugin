@@ -1,0 +1,9 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:entry title="Track Android (APK)" field="trackAndroid">
+        <f:checkbox default="true"/>
+    </f:entry>
+    <f:entry title="Track iOS (IPA)" field="trackIos">
+        <f:checkbox default="true"/>
+    </f:entry>
+</j:jelly>

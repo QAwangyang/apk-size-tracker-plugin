@@ -1,0 +1,40 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
+
+    <j:if test="${it.hasApk()}">
+        <tr>
+            <td class="pane-header" colspan="2">APK Size</td>
+        </tr>
+        <tr>
+            <td class="pane">File:</td>
+            <td class="pane">${it.apkFileName}</td>
+        </tr>
+        <tr>
+            <td class="pane">Size:</td>
+            <td class="pane"><b>${it.apkSizeDisplay}</b></td>
+        </tr>
+    </j:if>
+
+    <j:if test="${it.hasIpa()}">
+        <tr>
+            <td class="pane-header" colspan="2">IPA Size</td>
+        </tr>
+        <tr>
+            <td class="pane">File:</td>
+            <td class="pane">${it.ipaFileName}</td>
+        </tr>
+        <tr>
+            <td class="pane">Size:</td>
+            <td class="pane"><b>${it.ipaSizeDisplay}</b></td>
+        </tr>
+    </j:if>
+
+    <j:if test="${!it.hasApk() and !it.hasIpa()}">
+        <tr>
+            <td class="pane" colspan="2" style="color: #999;">
+                No APK or IPA files tracked
+            </td>
+        </tr>
+    </j:if>
+
+</j:jelly>
