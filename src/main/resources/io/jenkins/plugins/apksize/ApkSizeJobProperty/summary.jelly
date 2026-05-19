@@ -1,98 +1,24 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form">
 
-    <!-- Chart container — JS will move this below "Last Successful Artifacts" -->
-    <div id="apk-trend-chart" style="display:none">
-        <table style="width:100%">
-            <tr>
-                <td class="pane-header" colspan="2">
-                    <img src="${rootURL}/plugin/apk-size-tracker/icons/chart-icon.svg"
-                         width="16" height="16"
-                         style="vertical-align:middle;margin-right:4px" alt="chart"/>
-                    APK/IPA Size Trend
-                    <span id="apk-diff-text" style="font-weight:normal;font-size:12px;color:#666;margin-left:6px"></span>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="2" style="padding:4px">
-                    <iframe src="apkSizeTrend/widget"
-                            width="100%" height="280" frameborder="0" scrolling="no"
-                            style="display:block;border:none;overflow:hidden;border-radius:4px">
-                    </iframe>
-                </td>
-            </tr>
-        </table>
-    </div>
-
-    <script>
-    (function() {
-        // ---- 1) Fetch diff info from API and update header ----
-        function loadDiff() {
-            var span = document.getElementById('apk-diff-text');
-            if (!span) return;
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'apkSizeTrend/data', true);
-            xhr.onload = function() {
-                try {
-                    var d = JSON.parse(xhr.responseText);
-                    var parts = [];
-                    if (d.diff && d.diff.apk) {
-                        var apk = d.diff.apk;
-                        var sign = apk.diffMb > 0 ? '+' : '';
-                        parts.push('APK #' + apk.latestBN + ': ' + sign + apk.diffMb.toFixed(2) + 'MB vs #' + apk.prevBN);
-                    }
-                    if (d.diff && d.diff.ipa) {
-                        var ipa = d.diff.ipa;
-                        var sign = ipa.diffMb > 0 ? '+' : '';
-                        parts.push('IPA #' + ipa.latestBN + ': ' + sign + ipa.diffMb.toFixed(2) + 'MB vs #' + ipa.prevBN);
-                    }
-                    if (parts.length > 0) {
-                        span.textContent = ' | ' + parts.join(' | ');
-                    } else if (d.apk && d.apk.buildNumbers && d.apk.buildNumbers.length > 0) {
-                        var idx = d.apk.buildNumbers.length - 1;
-                        span.textContent = ' | Latest #' + d.apk.buildNumbers[idx] + ': ' + Number(d.apk.sizesMb[idx]).toFixed(2) + 'MB';
-                    }
-                } catch(e) {}
-            };
-            xhr.send();
-        }
-
-        // ---- 2) Move chart DOM to below "Last Successful Artifacts" ----
-        function moveChart() {
-            var chartDiv = document.getElementById('apk-trend-chart');
-            if (!chartDiv) return;
-
-            var artLink = document.querySelector('a[href*="/artifact/"]');
-            if (!artLink) {
-                chartDiv.style.display = '';
-                loadDiff();
-                return;
-            }
-
-            var artTable = artLink.closest('table');
-            if (!artTable || !artTable.parentNode) {
-                chartDiv.style.display = '';
-                loadDiff();
-                return;
-            }
-
-            var parent = artTable.parentNode;
-            if (parent.contains(chartDiv)) {
-                loadDiff();
-                return;
-            }
-
-            parent.insertBefore(chartDiv, artTable.nextSibling);
-            chartDiv.style.display = '';
-            loadDiff();
-        }
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', moveChart);
-        } else {
-            setTimeout(moveChart, 50);
-        }
-    })();
-    </script>
+    <!-- Chart renders in the default position (may appear above artifacts) -->
+    <table style="width:100%">
+        <tr>
+            <td class="pane-header" colspan="2">
+                <img src="${rootURL}/plugin/apk-size-tracker/icons/chart-icon.svg"
+                     width="16" height="16"
+                     style="vertical-align:middle;margin-right:4px" alt="chart"/>
+                APK/IPA Size Trend
+            </td>
+        </tr>
+        <tr>
+            <td colspan="2" style="padding:4px">
+                <iframe src="apkSizeTrend/widget"
+                        width="100%" height="280" frameborder="0" scrolling="no"
+                        style="display:block;border:none;overflow:hidden;border-radius:4px">
+                </iframe>
+            </td>
+        </tr>
+    </table>
 
 </j:jelly>
