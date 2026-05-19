@@ -134,8 +134,9 @@ public class ApkSizeTrendAction implements Action {
         html.append("function renderChart(data){\n");
         html.append("var hasApk=data.apk&&data.apk.buildNumbers&&data.apk.buildNumbers.length>0;\n");
         html.append("var hasIpa=data.ipa&&data.ipa.buildNumbers&&data.ipa.buildNumbers.length>0;\n");
+        html.append("var hasHap=data.hap&&data.hap.buildNumbers&&data.hap.buildNumbers.length>0;\n");
         html.append("document.getElementById('updateInfo').textContent='Last updated: '+(data.lastUpdated||'-');\n");
-        html.append("if(!hasApk&&!hasIpa){\n");
+        html.append("if(!hasApk&&!hasIpa&&!hasHap){\n");
         html.append("document.getElementById('noData').style.display='block';");
         html.append("document.getElementById('chart').style.display='none';return;}\n");
 
@@ -150,11 +151,16 @@ public class ApkSizeTrendAction implements Action {
         html.append("if(d.diffMb>0)diffHtml+='<span class=\"diff-info diff-up\">IPA: Build #'+d.latestBN+' vs #'+d.prevBN+' +'+d.diffMb.toFixed(2)+' MB</span> ';");
         html.append("else if(d.diffMb<0)diffHtml+='<span class=\"diff-info diff-down\">IPA: Build #'+d.latestBN+' vs #'+d.prevBN+' '+d.diffMb.toFixed(2)+' MB</span> ';");
         html.append("else diffHtml+='<span class=\"diff-info diff-same\">IPA: Build #'+d.latestBN+' vs #'+d.prevBN+' — no change</span> ';");
+        html.append("}\n");
+        html.append("if(data.diff&&data.diff.hap){var d=data.diff.hap;");
+        html.append("if(d.diffMb>0)diffHtml+='<span class=\"diff-info diff-up\">HAP: Build #'+d.latestBN+' vs #'+d.prevBN+' +'+d.diffMb.toFixed(2)+' MB</span> ';");
+        html.append("else if(d.diffMb<0)diffHtml+='<span class=\"diff-info diff-down\">HAP: Build #'+d.latestBN+' vs #'+d.prevBN+' '+d.diffMb.toFixed(2)+' MB</span> ';");
+        html.append("else diffHtml+='<span class=\"diff-info diff-same\">HAP: Build #'+d.latestBN+' vs #'+d.prevBN+' — no change</span> ';");
         html.append("}document.getElementById('diffArea').innerHTML=diffHtml;\n");
 
         // Build chart
         html.append("var legendData=[],series=[];\n");
-        html.append("var allBns=hasApk?data.apk.buildNumbers:data.ipa.buildNumbers;\n");
+        html.append("var allBns=hasApk?data.apk.buildNumbers:(hasIpa?data.ipa.buildNumbers:data.hap.buildNumbers);\n");
 
         // APK series
         html.append("if(hasApk){legendData.push('APK Size');");
@@ -176,6 +182,16 @@ public class ApkSizeTrendAction implements Action {
         html.append("data:data.ipa.sizesMb.map(Number)");
         html.append("});}\n");
 
+        // HAP series
+        html.append("if(hasHap){legendData.push('HAP Size');");
+        html.append("series.push({name:'HAP Size',type:'line',smooth:true,");
+        html.append("symbol:'triangle',symbolSize:6,");
+        html.append("lineStyle:{width:2,color:'#00cc99'},");
+        html.append("itemStyle:{color:'#00cc99'},");
+        html.append("areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(0,204,153,0.3)'},{offset:1,color:'rgba(0,204,153,0.05)'}])},");
+        html.append("data:data.hap.sizesMb.map(Number)");
+        html.append("});}\n");
+
         html.append("document.getElementById('chart').style.display='block';\n");
         html.append("var chart=echarts.init(document.getElementById('chart'));\n");
         html.append("chart.setOption({\n");
@@ -195,14 +211,15 @@ public class ApkSizeTrendAction implements Action {
         html.append("var total=allBns.length;\n");
         html.append("var startIdx=Math.max(0,total-5);\n");
         html.append("var tblHtml='<table><tr>");
-        html.append("<th>Build #</th><th>APK (MB)</th><th>IPA (MB)</th>");
+        html.append("<th>Build #</th><th>APK (MB)</th><th>IPA (MB)</th><th>HAP (MB)</th>");
         html.append("<th>Duration</th></tr>';\n");
         html.append("for(var i=startIdx;i<total;i++){\n");
         html.append("tblHtml+='<tr>';\n");
         html.append("tblHtml+='<td><b>#'+allBns[i]+'</b></td>';\n");
         html.append("tblHtml+='<td>'+(hasApk&&data.apk.sizesMb[i]?Number(data.apk.sizesMb[i]).toFixed(2):'-')+'</td>';\n");
         html.append("tblHtml+='<td>'+(hasIpa&&data.ipa.sizesMb[i]?Number(data.ipa.sizesMb[i]).toFixed(2):'-')+'</td>';\n");
-        html.append("var dur=(hasApk&&data.apk.durations&&data.apk.durations[i])||(hasIpa&&data.ipa.durations&&data.ipa.durations[i])||'-';\n");
+        html.append("tblHtml+='<td>'+(hasHap&&data.hap.sizesMb[i]?Number(data.hap.sizesMb[i]).toFixed(2):'-')+'</td>';\n");
+        html.append("var dur=(hasApk&&data.apk.durations&&data.apk.durations[i])||(hasIpa&&data.ipa.durations&&data.ipa.durations[i])||(hasHap&&data.hap.durations&&data.hap.durations[i])||'-';\n");
         html.append("tblHtml+='<td>'+dur+'</td>';\n");
         html.append("tblHtml+='</tr>';\n");
         html.append("}\n");
@@ -267,15 +284,17 @@ public class ApkSizeTrendAction implements Action {
         html.append("var d=chartData;\n");
         html.append("var hasApk=d.apk&&d.apk.buildNumbers&&d.apk.buildNumbers.length>0;\n");
         html.append("var hasIpa=d.ipa&&d.ipa.buildNumbers&&d.ipa.buildNumbers.length>0;\n");
-        html.append("if(!hasApk&&!hasIpa){document.getElementById('noData').style.display='block';return;}\n");
+        html.append("var hasHap=d.hap&&d.hap.buildNumbers&&d.hap.buildNumbers.length>0;\n");
+        html.append("if(!hasApk&&!hasIpa&&!hasHap){document.getElementById('noData').style.display='block';return;}\n");
         html.append("document.getElementById('chart').style.display='block';\n");
-        html.append("var allBns=hasApk?d.apk.buildNumbers:d.ipa.buildNumbers;\n");
+        html.append("var allBns=hasApk?d.apk.buildNumbers:(hasIpa?d.ipa.buildNumbers:d.hap.buildNumbers);\n");
         html.append("var legend=[],series=[];\n");
 
         // Diff banner
         html.append("var db=document.getElementById('diffBar');var dh='';\n");
-        html.append("if(d.diff&&d.diff.apk){var a=d.diff.apk;var s=a.diffMb>0?'<span class=\"up\">+'+a.diffMb.toFixed(2)+'MB</span>':a.diffMb<0?'<span class=\"down\">'+a.diffMb.toFixed(2)+'MB</span>':'0MB';dh+='APK #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
+        html.append("if(d.diff&&d.diff.apk){var a=d.diff.apk;dh+='APK #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
         html.append("if(d.diff&&d.diff.ipa){if(dh)dh+='<span class=\"sep\">|</span>';var a=d.diff.ipa;dh+='IPA #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
+        html.append("if(d.diff&&d.diff.hap){if(dh)dh+='<span class=\"sep\">|</span>';var a=d.diff.hap;dh+='HAP #'+a.latestBN+' <span class=\"'+ (a.diffMb>0?'up':'down') +'\">'+ (a.diffMb>0?'+':'') +a.diffMb.toFixed(2)+'MB</span> vs #'+a.prevBN;}\n");
         html.append("db.innerHTML=dh;\n");
 
         // APK
@@ -292,6 +311,13 @@ public class ApkSizeTrendAction implements Action {
         html.append("itemStyle:{color:'#ff6600'},");
         html.append("areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(255,102,0,0.25)'},{offset:1,color:'rgba(255,102,0,0.02)'}])},");
         html.append("data:d.ipa.sizesMb.map(Number)});}\n");
+        // HAP
+        html.append("if(hasHap){legend.push('HAP');");
+        html.append("series.push({name:'HAP',type:'line',smooth:true,");
+        html.append("symbol:'triangle',symbolSize:4,lineStyle:{width:1.5,color:'#00cc99'},");
+        html.append("itemStyle:{color:'#00cc99'},");
+        html.append("areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(0,204,153,0.25)'},{offset:1,color:'rgba(0,204,153,0.02)'}])},");
+        html.append("data:d.hap.sizesMb.map(Number)});}\n");
         // Chart
         html.append("var chart=echarts.init(document.getElementById('chart'));\n");
         html.append("chart.setOption({\n");

@@ -30,6 +30,7 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
 
     private boolean trackIos = true;
     private boolean trackAndroid = true;
+    private boolean trackHarmony = true;
 
     @DataBoundConstructor
     public ApkSizePublisher() {}
@@ -41,6 +42,10 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
     public boolean isTrackAndroid() { return trackAndroid; }
     @DataBoundSetter
     public void setTrackAndroid(boolean v) { this.trackAndroid = v; }
+
+    public boolean isTrackHarmony() { return trackHarmony; }
+    @DataBoundSetter
+    public void setTrackHarmony(boolean v) { this.trackHarmony = v; }
 
     @Override
     public void perform(@Nonnull Run<?, ?> run, @Nonnull FilePath workspace,
@@ -54,8 +59,8 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
         listener.getLogger().println("========================================");
         LOGGER.fine("perform() called for " + projectName + " #" + run.getNumber());
 
-        long apkSizeBytes = -1, ipaSizeBytes = -1;
-        String apkName = null, ipaName = null;
+        long apkSizeBytes = -1, ipaSizeBytes = -1, hapSizeBytes = -1;
+        String apkName = null, ipaName = null, hapName = null;
 
         int artifactCount = run.getArtifacts().size();
         LOGGER.fine("Found " + artifactCount + " archived artifacts");
@@ -69,34 +74,52 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
                 continue;
             }
 
-            if (trackAndroid && fn.endsWith(".apk")) {
+            // Android: .apk or .aab
+            if (trackAndroid && apkSizeBytes < 0 && (fn.endsWith(".apk") || fn.endsWith(".aab"))) {
                 apkSizeBytes = f.length();
                 apkName = artifact.getFileName();
                 String size = formatSize(apkSizeBytes);
-                listener.getLogger().println("[APK Size Tracker]   ✓ APK: " + apkName + " (" + size + ")");
+                String ext = fn.endsWith(".aab") ? "AAB" : "APK";
+                listener.getLogger().println("[APK Size Tracker]   ✓ " + ext + ": " + apkName + " (" + size + ")");
                 LOGGER.fine("APK captured: " + apkName + " = " + apkSizeBytes + " bytes");
-            } else if (trackIos && fn.endsWith(".ipa")) {
+
+            // iOS: .ipa
+            } else if (trackIos && ipaSizeBytes < 0 && fn.endsWith(".ipa")) {
                 ipaSizeBytes = f.length();
                 ipaName = artifact.getFileName();
                 String size = formatSize(ipaSizeBytes);
                 listener.getLogger().println("[APK Size Tracker]   ✓ IPA: " + ipaName + " (" + size + ")");
                 LOGGER.fine("IPA captured: " + ipaName + " = " + ipaSizeBytes + " bytes");
+
+            // HarmonyOS: .hap or .app
+            } else if (trackHarmony && hapSizeBytes < 0 && (fn.endsWith(".hap") || fn.endsWith(".app"))) {
+                hapSizeBytes = f.length();
+                hapName = artifact.getFileName();
+                String size = formatSize(hapSizeBytes);
+                String ext = fn.endsWith(".app") ? "APP" : "HAP";
+                listener.getLogger().println("[APK Size Tracker]   ✓ " + ext + ": " + hapName + " (" + size + ")");
+                LOGGER.fine("HAP captured: " + hapName + " = " + hapSizeBytes + " bytes");
+
             } else {
-                listener.getLogger().println("[APK Size Tracker]   Skipped: " + artifact.getFileName()
-                    + " (not .apk or .ipa)");
+                // Already captured a file for this platform, or not a tracked type
+                if (!fn.endsWith(".apk") && !fn.endsWith(".aab")
+                    && !fn.endsWith(".ipa")
+                    && !fn.endsWith(".hap") && !fn.endsWith(".app")) {
+                    listener.getLogger().println("[APK Size Tracker]   Skipped: " + artifact.getFileName());
+                }
             }
         }
 
         run.addAction(new ApkSizeBuildAction(
             run.getNumber(), run.getTimestampString(),
-            apkSizeBytes, ipaSizeBytes, apkName, ipaName));
+            apkSizeBytes, ipaSizeBytes, hapSizeBytes, apkName, ipaName, hapName));
         LOGGER.fine("ApkSizeBuildAction added to build #" + run.getNumber());
 
         // Persist to data file for fast retrieval on Trend page
         Job<?, ?> job = run.getParent();
         ApkSizeDataStore.appendBuild(
             job, run.getNumber(),
-            apkSizeBytes, ipaSizeBytes, run.getDuration());
+            apkSizeBytes, ipaSizeBytes, hapSizeBytes, run.getDuration());
         LOGGER.fine("ApkSizeDataStore updated for build #" + run.getNumber());
 
         // Auto-attach ApkSizeJobProperty so the trend chart shows on project page

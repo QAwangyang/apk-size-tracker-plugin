@@ -41,10 +41,30 @@
         </tr>
     </j:if>
 
-    <j:if test="${!it.hasApk() and !it.hasIpa()}">
+    <j:if test="${it.hasHap()}">
+        <tr>
+            <td class="pane-header" colspan="2">
+                <img src="${rootURL}/plugin/apk-size-tracker/icons/hap-icon.svg"
+                     width="16" height="16"
+                     style="vertical-align:middle;margin-right:4px"
+                     alt="HAP"/>
+                HAP Size
+            </td>
+        </tr>
+        <tr>
+            <td class="pane">File:</td>
+            <td class="pane">${it.hapFileName}</td>
+        </tr>
+        <tr>
+            <td class="pane">Size:</td>
+            <td class="pane"><b>${it.hapSizeDisplay}</b></td>
+        </tr>
+    </j:if>
+
+    <j:if test="${!it.hasApk() and !it.hasIpa() and !it.hasHap()}">
         <tr>
             <td class="pane" colspan="2" style="color: #999;">
-                No APK or IPA files tracked
+                No APK, IPA or HAP files tracked
             </td>
         </tr>
     </j:if>

@@ -33,7 +33,7 @@ public class ApkSizeDataStore {
     private static final String DATA_DIR = "apk-size-tracker";
     private static final int MAX_BUILDS = 1000;
     private static final int SCAN_LIMIT = 500;
-    private static final int DATA_VERSION = 2;
+    private static final int DATA_VERSION = 3;
 
     /** Per-file locks for thread-safe concurrent writes across builds */
     private static final ConcurrentHashMap<String, Object> fileLocks = new ConcurrentHashMap<>();
@@ -47,7 +47,7 @@ public class ApkSizeDataStore {
      * Thread-safe: synchronized per file path, atomic write via temp+rename.
      */
     public static void appendBuild(Job<?, ?> job, int buildNumber,
-                                    long apkBytes, long ipaBytes,
+                                    long apkBytes, long ipaBytes, long hapBytes,
                                     long durationMs) {
         File file = getDataFile(job);
         Object lock = fileLocks.computeIfAbsent(file.getAbsolutePath(), k -> new Object());
@@ -61,14 +61,14 @@ public class ApkSizeDataStore {
                 boolean updated = false;
                 for (int i = 0; i < builds.size(); i++) {
                     if (builds.get(i).buildNumber == buildNumber) {
-                        builds.set(i, new BuildRecord(buildNumber, apkBytes, ipaBytes, duration));
+                        builds.set(i, new BuildRecord(buildNumber, apkBytes, ipaBytes, hapBytes, duration));
                         updated = true;
                         LOGGER.fine("Updated build #" + buildNumber + " in data file");
                         break;
                     }
                 }
                 if (!updated) {
-                    builds.add(new BuildRecord(buildNumber, apkBytes, ipaBytes, duration));
+                    builds.add(new BuildRecord(buildNumber, apkBytes, ipaBytes, hapBytes, duration));
                     LOGGER.fine("Appended build #" + buildNumber + " to data file");
                 }
 
@@ -130,7 +130,7 @@ public class ApkSizeDataStore {
             Run<?, ?> build = builds.get(i);
             if (build.getResult() == null || !build.getResult().equals(Result.SUCCESS)) continue;
 
-            long apkBytes = -1, ipaBytes = -1;
+            long apkBytes = -1, ipaBytes = -1, hapBytes = -1;
             boolean found = false;
 
             // Phase 1: read from ApkSizeBuildAction (plugin-already-installed builds)
@@ -139,6 +139,7 @@ public class ApkSizeDataStore {
                 found = true;
                 if (ba.hasApk()) apkBytes = ba.getApkSizeBytes();
                 if (ba.hasIpa()) ipaBytes = ba.getIpaSizeBytes();
+                if (ba.hasHap()) hapBytes = ba.getHapSizeBytes();
             }
 
             // Phase 2: scan archived artifacts directly (historical builds)
@@ -147,14 +148,15 @@ public class ApkSizeDataStore {
                     String fn = artifact.getFileName().toLowerCase();
                     File f = artifact.getFile();
                     if (f != null && f.exists()) {
-                        if (fn.endsWith(".apk")) apkBytes = f.length();
+                        if (fn.endsWith(".apk") || fn.endsWith(".aab")) apkBytes = f.length();
                         else if (fn.endsWith(".ipa")) ipaBytes = f.length();
+                        else if (fn.endsWith(".hap") || fn.endsWith(".app")) hapBytes = f.length();
                     }
                 }
             }
 
             String duration = formatDuration(build.getDuration());
-            records.add(new BuildRecord(build.getNumber(), apkBytes, ipaBytes, duration));
+            records.add(new BuildRecord(build.getNumber(), apkBytes, ipaBytes, hapBytes, duration));
         }
 
         records.sort(Comparator.comparingInt(b -> b.buildNumber));
@@ -176,6 +178,9 @@ public class ApkSizeDataStore {
         List<String> ipaBns = new ArrayList<>();
         List<String> ipaSizes = new ArrayList<>();
         List<String> ipaDur = new ArrayList<>();
+        List<String> hapBns = new ArrayList<>();
+        List<String> hapSizes = new ArrayList<>();
+        List<String> hapDur = new ArrayList<>();
 
         for (BuildRecord rec : records) {
             if (rec.apkMb >= 0) {
@@ -187,6 +192,11 @@ public class ApkSizeDataStore {
                 ipaBns.add(String.valueOf(rec.buildNumber));
                 ipaSizes.add(String.format(Locale.US, "%.3f", rec.ipaMb));
                 ipaDur.add(escapeJson(rec.duration));
+            }
+            if (rec.hapMb >= 0) {
+                hapBns.add(String.valueOf(rec.buildNumber));
+                hapSizes.add(String.format(Locale.US, "%.3f", rec.hapMb));
+                hapDur.add(escapeJson(rec.duration));
             }
         }
 
@@ -202,11 +212,19 @@ public class ApkSizeDataStore {
         j.append("\"sizesMb\":[").append(String.join(",", ipaSizes)).append("],");
         j.append("\"durations\":[").append(joinQuoted(ipaDur)).append("]},");
 
+        // HAP
+        j.append("\"hap\":{");
+        j.append("\"buildNumbers\":[").append(String.join(",", hapBns)).append("],");
+        j.append("\"sizesMb\":[").append(String.join(",", hapSizes)).append("],");
+        j.append("\"durations\":[").append(joinQuoted(hapDur)).append("]},");
+
         // Diff
         j.append("\"diff\":{");
         appendDiff(j, "apk", apkBns, apkSizes);
         j.append(",");
         appendDiff(j, "ipa", ipaBns, ipaSizes);
+        j.append(",");
+        appendDiff(j, "hap", hapBns, hapSizes);
         j.append("},");
 
         // Timestamp
@@ -270,9 +288,10 @@ public class ApkSizeDataStore {
 
             double apk = extractDoubleValue(obj, "apkMb");
             double ipa = extractDoubleValue(obj, "ipaMb");
+            double hap = extractDoubleValue(obj, "hapMb");
             String dur = extractStringValue(obj, "duration");
 
-            records.add(new BuildRecord(num, apk >= 0 ? apk : -1, ipa >= 0 ? ipa : -1, dur));
+            records.add(new BuildRecord(num, apk >= 0 ? apk : -1, ipa >= 0 ? ipa : -1, hap >= 0 ? hap : -1, dur));
         }
 
         records.sort(Comparator.comparingInt(b -> b.buildNumber));
@@ -292,6 +311,7 @@ public class ApkSizeDataStore {
                 sb.append("\"num\":").append(b.buildNumber).append(",");
                 sb.append("\"apkMb\":").append(String.format(Locale.US, "%.3f", b.apkMb >= 0 ? b.apkMb : -1)).append(",");
                 sb.append("\"ipaMb\":").append(String.format(Locale.US, "%.3f", b.ipaMb >= 0 ? b.ipaMb : -1)).append(",");
+                sb.append("\"hapMb\":").append(String.format(Locale.US, "%.3f", b.hapMb >= 0 ? b.hapMb : -1)).append(",");
                 sb.append("\"duration\":\"").append(escapeJson(b.duration)).append("\"");
                 sb.append("}");
             }
@@ -448,19 +468,22 @@ public class ApkSizeDataStore {
         public final int buildNumber;
         public final double apkMb;
         public final double ipaMb;
+        public final double hapMb;
         public final String duration;
 
-        public BuildRecord(int buildNumber, long apkBytes, long ipaBytes, String duration) {
+        public BuildRecord(int buildNumber, long apkBytes, long ipaBytes, long hapBytes, String duration) {
             this.buildNumber = buildNumber;
             this.apkMb = apkBytes >= 0 ? bytesToMb(apkBytes) : -1;
             this.ipaMb = ipaBytes >= 0 ? bytesToMb(ipaBytes) : -1;
+            this.hapMb = hapBytes >= 0 ? bytesToMb(hapBytes) : -1;
             this.duration = duration != null ? duration : "-";
         }
 
-        public BuildRecord(int buildNumber, double apkMb, double ipaMb, String duration) {
+        public BuildRecord(int buildNumber, double apkMb, double ipaMb, double hapMb, String duration) {
             this.buildNumber = buildNumber;
             this.apkMb = apkMb;
             this.ipaMb = ipaMb;
+            this.hapMb = hapMb;
             this.duration = duration != null ? duration : "-";
         }
 
