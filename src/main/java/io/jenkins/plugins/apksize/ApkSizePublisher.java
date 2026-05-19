@@ -140,29 +140,9 @@ public class ApkSizePublisher extends Recorder implements SimpleBuildStep {
         String name = project != null ? project.getFullName() : "null";
         LOGGER.info("getProjectAction() called for: " + name);
         if (project != null) {
-            // Ensure the JobProperty is attached so trend chart shows on project page
-            ensureJobProperty(project);
             return new ApkSizeTrendAction(project);
         }
         return null;
-    }
-
-    /**
-     * Ensures ApkSizeJobProperty is attached to the project, so the trend chart
-     * renders in the project page's side panel. Safe to call every time — only
-     * attaches if missing.
-     */
-    private static void ensureJobProperty(Job<?, ?> job) {
-        if (job.getProperty(ApkSizeJobProperty.class) == null) {
-            try {
-                job.addProperty(new ApkSizeJobProperty());
-                job.save();
-                LOGGER.info("ApkSizeJobProperty auto-attached to " + job.getFullName());
-            } catch (Exception e) {
-                LOGGER.warning("Failed to attach ApkSizeJobProperty to "
-                    + job.getFullName() + ": " + e.getMessage());
-            }
-        }
     }
 
     @Extension
