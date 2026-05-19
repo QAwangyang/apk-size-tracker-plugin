@@ -3,7 +3,13 @@
 
     <j:if test="${it.hasApk()}">
         <tr>
-            <td class="pane-header" colspan="2">APK Size</td>
+            <td class="pane-header" colspan="2">
+                <img src="${rootURL}/plugin/apk-size-tracker/icons/apk-icon.svg"
+                     width="16" height="16"
+                     style="vertical-align:middle;margin-right:4px"
+                     alt="APK"/>
+                APK Size
+            </td>
         </tr>
         <tr>
             <td class="pane">File:</td>
@@ -17,7 +23,13 @@
 
     <j:if test="${it.hasIpa()}">
         <tr>
-            <td class="pane-header" colspan="2">IPA Size</td>
+            <td class="pane-header" colspan="2">
+                <img src="${rootURL}/plugin/apk-size-tracker/icons/ipa-icon.svg"
+                     width="16" height="16"
+                     style="vertical-align:middle;margin-right:4px"
+                     alt="IPA"/>
+                IPA Size
+            </td>
         </tr>
         <tr>
             <td class="pane">File:</td>
