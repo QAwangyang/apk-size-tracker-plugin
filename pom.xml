@@ -17,7 +17,7 @@
 
     <name>APK Size Tracker</name>
     <description>Tracks APK/IPA build artifact sizes and displays ECharts trend charts with diff comparison against previous builds</description>
-    <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin</url>
+    <url>https://github.com/QAwangyang/apk-size-tracker-plugin</url>
 
     <licenses>
         <license>
@@ -27,15 +27,15 @@
     </licenses>
 
     <scm>
-        <connection>scm:git:https://github.com/YOUR_USERNAME/apk-size-tracker-plugin.git</connection>
-        <developerConnection>scm:git:git@github.com:YOUR_USERNAME/apk-size-tracker-plugin.git</developerConnection>
-        <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin</url>
+        <connection>scm:git:https://github.com/QAwangyang/apk-size-tracker-plugin.git</connection>
+        <developerConnection>scm:git:git@github.com:QAwangyang/apk-size-tracker-plugin.git</developerConnection>
+        <url>https://github.com/QAwangyang/apk-size-tracker-plugin</url>
         <tag>HEAD</tag>
     </scm>
 
     <issueManagement>
         <system>GitHub Issues</system>
-        <url>https://github.com/YOUR_USERNAME/apk-size-tracker-plugin/issues</url>
+        <url>https://github.com/QAwangyang/apk-size-tracker-plugin/issues</url>
     </issueManagement>
 
     <properties>

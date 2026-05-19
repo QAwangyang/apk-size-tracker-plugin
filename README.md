@@ -33,7 +33,7 @@ A Jenkins plugin that automatically tracks **APK** and **IPA** build artifact si
 3. Check the box and click **Install without restart**
 4. Done! 🎉
 
-Or download the HPI file from the [releases page](https://github.com/YOUR_USERNAME/apk-size-tracker-plugin/releases) and install manually.
+Or download the HPI file from the [releases page](https://github.com/QAwangyang/apk-size-tracker-plugin/releases) and install manually.
 
 ### Usage
 
@@ -98,7 +98,7 @@ The chart page features:
 ## Building from Source 🔧
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/apk-size-tracker-plugin.git
+git clone https://github.com/QAwangyang/apk-size-tracker-plugin.git
 cd apk-size-tracker-plugin
 mvn clean package -DskipTests
 # Output: target/apk-size-tracker.hpi
