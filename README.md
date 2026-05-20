@@ -6,8 +6,6 @@
 
 A Jenkins plugin that automatically tracks **APK** and **IPA** build artifact sizes and shows a beautiful **ECharts trend chart** with size diff comparisons.
 
-![APK Size Trend Chart](https://plugins.jenkins.io/apk-size-tracker/screenshot)
-
 ## Features ✨
 
 - **Automatic tracking** — captures .apk and .ipa sizes as a post-build step
@@ -27,13 +25,9 @@ A Jenkins plugin that automatically tracks **APK** and **IPA** build artifact si
 - Java **17** or newer
 
 ### Installation
-
-1. Go to **Manage Jenkins** → **Plugins** → **Available Plugins**
-2. Search for "APK Size Tracker"
-3. Check the box and click **Install without restart**
-4. Done! 🎉
-
-Or download the HPI file from the [releases page](https://github.com/QAwangyang/apk-size-tracker-plugin/releases) and install manually.
+1. download the HPI file from the [releases page](https://github.com/QAwangyang/apk-size-tracker-plugin/releases) and install manually.
+2. Go to **Manage Jenkins** → **Plugins**  click **Install without restart**
+3. Done! 🎉
 
 ### Usage
 
@@ -104,16 +98,6 @@ mvn clean package -DskipTests
 # Output: target/apk-size-tracker.hpi
 ```
 
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.2.1 | 2026-05 | ECharts bundled inline (no CDN), zero network dependency |
-| 1.2.0 | 2026-05 | Persistent data cache (disk-backed, sub-ms loads) |
-| 1.1.1 | 2026-05 | Chart layout fixes, diff banner, last-5 table, duration display |
-| 1.1.0 | 2026-05 | Switched to doIndex() approach — fixed 404 issues |
-| 1.0.0 | 2026-05 | Initial release with Jelly views |
-
 ## Roadmap 🗺️
 
 - [ ] Threshold alerts (warn when build exceeds X MB)
@@ -121,16 +105,6 @@ mvn clean package -DskipTests
 - [ ] Configurable max build history
 - [ ] Email notifications on size regressions
 - [ ] Pipeline step syntax generator
-
-## Contributing 🤝
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch: `git checkout -b feature/my-feature`
-3. Commit your changes: `git commit -am 'Add my feature'`
-4. Push to the branch: `git push origin feature/my-feature`
-5. Open a Pull Request
 
 ## License 📄
 
