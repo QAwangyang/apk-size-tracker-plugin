@@ -31,8 +31,8 @@ public class ApkSizeDataStore {
 
     private static final Logger LOGGER = Logger.getLogger(ApkSizeDataStore.class.getName());
     private static final String DATA_DIR = "apk-size-tracker";
-    private static final int MAX_BUILDS = 1000;
-    private static final int SCAN_LIMIT = 500;
+    private static final int MAX_BUILDS = 5000;
+    private static final int SCAN_LIMIT = 5000;
     private static final int DATA_VERSION = 3;
 
     /** Per-file locks for thread-safe concurrent writes across builds */

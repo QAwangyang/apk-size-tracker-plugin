@@ -410,9 +410,11 @@ public class ApkSizeTrendAction implements Action {
      */
     private boolean needsBackfill(List<ApkSizeDataStore.BuildRecord> records) {
         if (records == null || records.isEmpty()) return true;
-        if (records.size() >= 20) return false;        // comprehensive enough
         int totalBuilds = job.getBuilds().size();
         if (totalBuilds <= 1) return false;             // legitimately only 1 build
+        // Only skip backfill if we have most of the builds or total is small.
+        // This handles upgrades where SCAN_LIMIT/MAX_BUILDS was increased.
+        if (totalBuilds <= 100 || records.size() >= totalBuilds * 0.9) return false;
         return records.size() < totalBuilds;            // sparse vs actual
     }
 

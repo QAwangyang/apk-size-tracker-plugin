@@ -12,7 +12,7 @@
 
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>apk-size-tracker</artifactId>
-    <version>1.4.0</version>
+    <version>1.4.1</version>
     <packaging>hpi</packaging>
 
     <name>APK Size Tracker</name>

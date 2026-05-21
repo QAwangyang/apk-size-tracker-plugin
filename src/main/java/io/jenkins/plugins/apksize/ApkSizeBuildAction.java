@@ -37,7 +37,7 @@ public class ApkSizeBuildAction implements Action, Serializable {
 
     @Override
     public String getIconFileName() {
-        return "/plugin/apk-size-tracker/icons/chart-icon.svg";
+        return null; // hide sidebar link (URL leads to 404)
     }
 
     @Override
