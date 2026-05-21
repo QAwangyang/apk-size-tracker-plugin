@@ -36,11 +36,27 @@
         function renderChart(data) {
             document.getElementById('updateInfo').textContent = 'Last updated: ' + (data.lastUpdated || '-');
 
-            var hasApk = data.apk && data.apk.buildNumbers && data.apk.buildNumbers.length > 0;
-            var hasIpa = data.ipa && data.ipa.buildNumbers && data.ipa.buildNumbers.length > 0;
+            console.log('[APK Size Tracker] data keys:', Object.keys(data));
+            console.log('[APK Size Tracker] allBuildNumbers:', data.allBuildNumbers);
+            console.log('[APK Size Tracker] apk.sizesMb:', data.apk ? data.apk.sizesMb : 'no apk');
+            console.log('[APK Size Tracker] ipa.sizesMb:', data.ipa ? data.ipa.sizesMb : 'no ipa');
 
-            if (!hasApk && !hasIpa) {
+            var buildNumbers = data.allBuildNumbers || [];
+            if (!buildNumbers || buildNumbers.length === 0) {
                 document.getElementById('noData').style.display = 'block';
+                document.getElementById('noData').textContent = 'DEBUG: allBuildNumbers is empty';
+                console.log('[APK Size Tracker] DEBUG: allBuildNumbers empty');
+                return;
+            }
+
+            var hasApk = data.apk && data.apk.sizesMb && data.apk.sizesMb.some(function(v) { return v !== 'null' &amp;&amp; v !== null; });
+            var hasIpa = data.ipa && data.ipa.sizesMb && data.ipa.sizesMb.some(function(v) { return v !== 'null' &amp;&amp; v !== null; });
+            var hasHap = data.hap && data.hap.sizesMb && data.hap.sizesMb.some(function(v) { return v !== 'null' &amp;&amp; v !== null; });
+
+            if (!hasApk &amp;&amp; !hasIpa &amp;&amp; !hasHap) {
+                document.getElementById('noData').style.display = 'block';
+                document.getElementById('noData').textContent = 'DEBUG: hasApk=' + hasApk + ' hasIpa=' + hasIpa + ' hasHap=' + hasHap;
+                console.log('[APK Size Tracker] DEBUG: hasApk=' + hasApk + ' hasIpa=' + hasIpa + ' hasHap=' + hasHap);
                 return;
             }
 
@@ -48,10 +64,13 @@
 
             var series = [];
             var legendData = [];
-            var buildNumbers = [];
+
+            // Helper: convert "null" strings to actual null for ECharts gaps
+            function toNumArray(arr) {
+                return arr.map(function(v) { return (v === 'null' || v === null) ? null : Number(v); });
+            }
 
             if (hasApk) {
-                buildNumbers = data.apk.buildNumbers;
                 legendData.push('APK Size');
                 series.push({
                     name: 'APK Size', type: 'line', smooth: true,
@@ -64,12 +83,11 @@
                             { offset: 1, color: 'rgba(0,153,255,0.05)' }
                         ])
                     },
-                    data: data.apk.sizesMb.map(Number)
+                    data: toNumArray(data.apk.sizesMb)
                 });
             }
 
             if (hasIpa) {
-                if (!hasApk) buildNumbers = data.ipa.buildNumbers;
                 legendData.push('IPA Size');
                 series.push({
                     name: 'IPA Size', type: 'line', smooth: true,
@@ -82,7 +100,24 @@
                             { offset: 1, color: 'rgba(255,102,0,0.05)' }
                         ])
                     },
-                    data: data.ipa.sizesMb.map(Number)
+                    data: toNumArray(data.ipa.sizesMb)
+                });
+            }
+
+            if (hasHap) {
+                legendData.push('HAP Size');
+                series.push({
+                    name: 'HAP Size', type: 'line', smooth: true,
+                    symbol: 'triangle', symbolSize: 6,
+                    lineStyle: { width: 2, color: '#00cc99' },
+                    itemStyle: { color: '#00cc99' },
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(0,204,153,0.3)' },
+                            { offset: 1, color: 'rgba(0,204,153,0.05)' }
+                        ])
+                    },
+                    data: toNumArray(data.hap.sizesMb)
                 });
             }
 
@@ -94,7 +129,9 @@
                         var idx = params[0].dataIndex;
                         var r = 'Build: <b>#' + buildNumbers[idx] + '</b><br/>';
                         params.forEach(function(p) {
-                            r += p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value).toFixed(2) + ' MB</b><br/>';
+                            if (p.value !== null &amp;&amp; p.value !== undefined) {
+                                r += p.marker + ' ' + p.seriesName + ': <b>' + Number(p.value).toFixed(2) + ' MB</b><br/>';
+                            }
                         });
                         return r;
                     }
@@ -115,26 +152,25 @@
             });
             window.addEventListener('resize', function() { chart.resize(); });
 
-            // Data table
+            // Build data table: align APK/IPA/HAP by build number index
             var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">' +
                 '<tr style="background:#f8f9fa;">' +
                 '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">Build #</th>' +
                 '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">APK (MB)</th>' +
-                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">IPA (MB)</th>';
-            if (hasApk && data.apk.timestamps && data.apk.timestamps.length) {
-                html += '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">Timestamp</th>';
-            }
-            html += '</tr>';
+                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">IPA (MB)</th>' +
+                '<th style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">HAP (MB)</th>' +
+                '</tr>';
 
             for (var i = 0; i < buildNumbers.length; i++) {
-                html += '<tr>';
-                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;"><b>#' + buildNumbers[i] + '</b></td>';
-                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (hasApk && data.apk.sizesMb[i] ? Number(data.apk.sizesMb[i]).toFixed(2) : '-') + '</td>';
-                html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (hasIpa && data.ipa.sizesMb[i] ? Number(data.ipa.sizesMb[i]).toFixed(2) : '-') + '</td>';
-                if (hasApk && data.apk.timestamps && data.apk.timestamps.length) {
-                    html += '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + (data.apk.timestamps[i] || '') + '</td>';
-                }
-                html += '</tr>';
+                var apkVal = hasApk &amp;&amp; data.apk.sizesMb[i] &amp;&amp; data.apk.sizesMb[i] !== 'null' ? Number(data.apk.sizesMb[i]).toFixed(2) : '-';
+                var ipaVal = hasIpa &amp;&amp; data.ipa.sizesMb[i] &amp;&amp; data.ipa.sizesMb[i] !== 'null' ? Number(data.ipa.sizesMb[i]).toFixed(2) : '-';
+                var hapVal = hasHap &amp;&amp; data.hap.sizesMb[i] &amp;&amp; data.hap.sizesMb[i] !== 'null' ? Number(data.hap.sizesMb[i]).toFixed(2) : '-';
+                html += '<tr>' +
+                    '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;"><b>#' + buildNumbers[i] + '</b></td>' +
+                    '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + apkVal + '</td>' +
+                    '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + ipaVal + '</td>' +
+                    '<td style="padding:6px 10px;text-align:center;border-bottom:1px solid #eee;">' + hapVal + '</td>' +
+                    '</tr>';
             }
             html += '</table>';
             document.getElementById('dataTable').innerHTML = html;

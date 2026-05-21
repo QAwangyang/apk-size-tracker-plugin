@@ -124,11 +124,15 @@ public class ApkSizeDataStore {
         LOGGER.info("Scanning " + limit + "/" + builds.size() + " builds for initial data file...");
 
         List<BuildRecord> records = new ArrayList<>();
+        int skippedNotSuccess = 0, foundAction = 0, foundArtifact = 0, foundNothing = 0;
 
         // Iterate oldest → newest so records are naturally ascending
         for (int i = limit - 1; i >= 0; i--) {
             Run<?, ?> build = builds.get(i);
-            if (build.getResult() == null || !build.getResult().equals(Result.SUCCESS)) continue;
+            if (build.getResult() == null || !build.getResult().equals(Result.SUCCESS)) {
+                skippedNotSuccess++;
+                continue;
+            }
 
             long apkBytes = -1, ipaBytes = -1, hapBytes = -1;
             boolean found = false;
@@ -137,6 +141,7 @@ public class ApkSizeDataStore {
             ApkSizeBuildAction ba = build.getAction(ApkSizeBuildAction.class);
             if (ba != null) {
                 found = true;
+                foundAction++;
                 if (ba.hasApk()) apkBytes = ba.getApkSizeBytes();
                 if (ba.hasIpa()) ipaBytes = ba.getIpaSizeBytes();
                 if (ba.hasHap()) hapBytes = ba.getHapSizeBytes();
@@ -144,14 +149,24 @@ public class ApkSizeDataStore {
 
             // Phase 2: scan archived artifacts directly (historical builds)
             if (!found) {
+                String arts = "";
                 for (Run.Artifact artifact : build.getArtifacts()) {
                     String fn = artifact.getFileName().toLowerCase();
                     File f = artifact.getFile();
+                    String exists = (f != null && f.exists()) ? "OK" : "GONE";
+                    arts += " " + artifact.getFileName() + "[" + exists + "]";
                     if (f != null && f.exists()) {
                         if (fn.endsWith(".apk") || fn.endsWith(".aab")) apkBytes = f.length();
                         else if (fn.endsWith(".ipa")) ipaBytes = f.length();
                         else if (fn.endsWith(".hap") || fn.endsWith(".app")) hapBytes = f.length();
                     }
+                }
+                if (!arts.isEmpty()) {
+                    foundArtifact++;
+                    LOGGER.info("  Scan #" + build.getNumber() + ": artifacts=" + arts);
+                } else {
+                    foundNothing++;
+                    LOGGER.info("  Scan #" + build.getNumber() + ": NO artifacts (deleted by retention?)");
                 }
             }
 
@@ -160,7 +175,9 @@ public class ApkSizeDataStore {
         }
 
         records.sort(Comparator.comparingInt(b -> b.buildNumber));
-        LOGGER.info("Initial scan complete: " + records.size() + " build records");
+        LOGGER.info("Initial scan complete: " + records.size() + " records"
+            + " (action=" + foundAction + " artifact=" + foundArtifact + " no-data=" + foundNothing
+            + " skipped=" + skippedNotSuccess + ")");
         return records;
     }
 
@@ -168,64 +185,133 @@ public class ApkSizeDataStore {
      * Convert BuildRecords to the chart-ready JSON format that doIndex() expects.
      * Same structure as the original buildTrendJson() output — fully compatible.
      */
-    public static String toChartJson(Job<?, ?> job, List<BuildRecord> records) {
+    public static String toChartJson(Job<?, ?> job, List<BuildRecord> records,
+                                      boolean trackApk, boolean trackIpa, boolean trackHap) {
         StringBuilder j = new StringBuilder(8192);
         j.append("{\"job\":\"").append(escapeJson(job.getDisplayName())).append("\",");
 
-        List<String> apkBns = new ArrayList<>();
-        List<String> apkSizes = new ArrayList<>();
-        List<String> apkDur = new ArrayList<>();
-        List<String> ipaBns = new ArrayList<>();
-        List<String> ipaSizes = new ArrayList<>();
-        List<String> ipaDur = new ArrayList<>();
-        List<String> hapBns = new ArrayList<>();
-        List<String> hapSizes = new ArrayList<>();
-        List<String> hapDur = new ArrayList<>();
-
+        // ── Build unified x-axis from all build numbers ──
+        TreeSet<Integer> allBnsSet = new TreeSet<>();
         for (BuildRecord rec : records) {
-            if (rec.apkMb >= 0) {
-                apkBns.add(String.valueOf(rec.buildNumber));
-                apkSizes.add(String.format(Locale.US, "%.3f", rec.apkMb));
-                apkDur.add(escapeJson(rec.duration));
+            if (rec.apkMb >= 0 || rec.ipaMb >= 0 || rec.hapMb >= 0) {
+                allBnsSet.add(rec.buildNumber);
             }
-            if (rec.ipaMb >= 0) {
-                ipaBns.add(String.valueOf(rec.buildNumber));
-                ipaSizes.add(String.format(Locale.US, "%.3f", rec.ipaMb));
-                ipaDur.add(escapeJson(rec.duration));
-            }
-            if (rec.hapMb >= 0) {
-                hapBns.add(String.valueOf(rec.buildNumber));
-                hapSizes.add(String.format(Locale.US, "%.3f", rec.hapMb));
-                hapDur.add(escapeJson(rec.duration));
+        }
+        List<Integer> allBnsList = new ArrayList<>(allBnsSet);
+
+        // Build a lookup map: buildNumber → record
+        Map<Integer, BuildRecord> recMap = new LinkedHashMap<>();
+        for (BuildRecord rec : records) {
+            recMap.put(rec.buildNumber, rec);
+        }
+
+        // ── Generate aligned series data ──
+        List<String> apkSizesAligned = new ArrayList<>();
+        List<String> ipaSizesAligned = new ArrayList<>();
+        List<String> hapSizesAligned = new ArrayList<>();
+        List<String> durationsAligned = new ArrayList<>();
+        List<String> apkDurAligned = new ArrayList<>();
+        List<String> ipaDurAligned = new ArrayList<>();
+        List<String> hapDurAligned = new ArrayList<>();
+
+        for (int bn : allBnsList) {
+            BuildRecord rec = recMap.get(bn);
+            if (rec != null) {
+                // APK (skip if not tracked)
+                if (trackApk && rec.apkMb >= 0) {
+                    apkSizesAligned.add(String.format(Locale.US, "%.3f", rec.apkMb));
+                    apkDurAligned.add(escapeJson(rec.duration));
+                } else {
+                    apkSizesAligned.add("null");
+                    apkDurAligned.add("");
+                }
+                // IPA (skip if not tracked)
+                if (trackIpa && rec.ipaMb >= 0) {
+                    ipaSizesAligned.add(String.format(Locale.US, "%.3f", rec.ipaMb));
+                    ipaDurAligned.add(escapeJson(rec.duration));
+                } else {
+                    ipaSizesAligned.add("null");
+                    ipaDurAligned.add("");
+                }
+                // HAP (skip if not tracked)
+                if (trackHap && rec.hapMb >= 0) {
+                    hapSizesAligned.add(String.format(Locale.US, "%.3f", rec.hapMb));
+                    hapDurAligned.add(escapeJson(rec.duration));
+                } else {
+                    hapSizesAligned.add("null");
+                    hapDurAligned.add("");
+                }
+                // Duration for any type
+                durationsAligned.add(escapeJson(rec.duration));
             }
         }
 
-        // APK
+        // ── Build JSON output ──
+
+        // Unified x-axis
+        j.append("\"allBuildNumbers\":[");
+        for (int i = 0; i < allBnsList.size(); i++) {
+            if (i > 0) j.append(",");
+            j.append(allBnsList.get(i));
+        }
+        j.append("],");
+
+        // Aligned series data (force hasData=false for untracked platforms)
+        boolean apkHasData = trackApk && apkSizesAligned.stream().anyMatch(s -> !"null".equals(s));
+        boolean ipaHasData = trackIpa && ipaSizesAligned.stream().anyMatch(s -> !"null".equals(s));
+        boolean hapHasData = trackHap && hapSizesAligned.stream().anyMatch(s -> !"null".equals(s));
+
         j.append("\"apk\":{");
-        j.append("\"buildNumbers\":[").append(String.join(",", apkBns)).append("],");
-        j.append("\"sizesMb\":[").append(String.join(",", apkSizes)).append("],");
-        j.append("\"durations\":[").append(joinQuoted(apkDur)).append("]},");
+        j.append("\"hasData\":").append(apkHasData).append(",");
+        j.append("\"sizesMb\":[").append(String.join(",", apkSizesAligned)).append("],");
+        j.append("\"durations\":[").append(joinQuoted(apkDurAligned)).append("]},");
 
-        // IPA
         j.append("\"ipa\":{");
-        j.append("\"buildNumbers\":[").append(String.join(",", ipaBns)).append("],");
-        j.append("\"sizesMb\":[").append(String.join(",", ipaSizes)).append("],");
-        j.append("\"durations\":[").append(joinQuoted(ipaDur)).append("]},");
+        j.append("\"hasData\":").append(ipaHasData).append(",");
+        j.append("\"sizesMb\":[").append(String.join(",", ipaSizesAligned)).append("],");
+        j.append("\"durations\":[").append(joinQuoted(ipaDurAligned)).append("]},");
 
-        // HAP
         j.append("\"hap\":{");
-        j.append("\"buildNumbers\":[").append(String.join(",", hapBns)).append("],");
-        j.append("\"sizesMb\":[").append(String.join(",", hapSizes)).append("],");
-        j.append("\"durations\":[").append(joinQuoted(hapDur)).append("]},");
+        j.append("\"hasData\":").append(hapHasData).append(",");
+        j.append("\"sizesMb\":[").append(String.join(",", hapSizesAligned)).append("],");
+        j.append("\"durations\":[").append(joinQuoted(hapDurAligned)).append("]},");
 
-        // Diff
+        // Legacy buildNumbers arrays (for build numbers per series, kept for tooltip/table)
+        StringBuilder apkBnsJson = new StringBuilder();
+        StringBuilder ipaBnsJson = new StringBuilder();
+        StringBuilder hapBnsJson = new StringBuilder();
+        for (int bn : allBnsList) {
+            BuildRecord rec = recMap.get(bn);
+            if (rec != null) {
+                if (rec.apkMb >= 0) {
+                    if (apkBnsJson.length() > 0) apkBnsJson.append(",");
+                    apkBnsJson.append(bn);
+                }
+                if (rec.ipaMb >= 0) {
+                    if (ipaBnsJson.length() > 0) ipaBnsJson.append(",");
+                    ipaBnsJson.append(bn);
+                }
+                if (rec.hapMb >= 0) {
+                    if (hapBnsJson.length() > 0) hapBnsJson.append(",");
+                    hapBnsJson.append(bn);
+                }
+            }
+        }
+        j.append("\"apkBns\":[").append(apkBnsJson).append("],");
+        j.append("\"ipaLegacy\":[").append(ipaBnsJson).append("],");
+        j.append("\"hapLegacy\":[").append(hapBnsJson).append("],");
+
+        // Diff (use aligned arrays for calculation)
         j.append("\"diff\":{");
-        appendDiff(j, "apk", apkBns, apkSizes);
+        appendAlignedDiff(j, "apk", apkSizesAligned, allBnsList);
         j.append(",");
-        appendDiff(j, "ipa", ipaBns, ipaSizes);
+        appendAlignedDiff(j, "ipa", ipaSizesAligned, allBnsList);
         j.append(",");
-        appendDiff(j, "hap", hapBns, hapSizes);
+        appendAlignedDiff(j, "hap", hapSizesAligned, allBnsList);
         j.append("},");
+
+        // Duration per build (for table)
+        j.append("\"durations\":[").append(joinQuoted(durationsAligned)).append("],");
 
         // Timestamp
         j.append("\"lastUpdated\":\"")
@@ -448,13 +534,27 @@ public class ApkSizeDataStore {
         return hour + "h " + min + "m " + sec + "s";
     }
 
-    private static void appendDiff(StringBuilder j, String type, List<String> bns, List<String> sizes) {
-        if (bns.size() >= 2) {
-            int last = bns.size() - 1;
-            int prev = last - 1;
-            double diffMb = Double.parseDouble(sizes.get(last)) - Double.parseDouble(sizes.get(prev));
-            j.append("\"").append(type).append("\":{\"latestBN\":").append(bns.get(last))
-                .append(",\"prevBN\":").append(bns.get(prev))
+    private static void appendAlignedDiff(StringBuilder j, String type, List<String> alignedSizes, List<Integer> allBnsList) {
+        double last = -1, prev = -1;
+        int lastIdx = -1, prevIdx = -1;
+        for (int i = alignedSizes.size() - 1; i >= 0; i--) {
+            String s = alignedSizes.get(i);
+            if (!"null".equals(s) && !s.isEmpty()) {
+                double val = Double.parseDouble(s);
+                if (lastIdx < 0) {
+                    last = val;
+                    lastIdx = i;
+                } else if (prevIdx < 0) {
+                    prev = val;
+                    prevIdx = i;
+                    break;
+                }
+            }
+        }
+        if (lastIdx >= 0 && prevIdx >= 0) {
+            double diffMb = last - prev;
+            j.append("\"").append(type).append("\":{\"latestBN\":").append(allBnsList.get(lastIdx))
+                .append(",\"prevBN\":").append(allBnsList.get(prevIdx))
                 .append(",\"diffMb\":").append(String.format(Locale.US, "%.3f", diffMb)).append("}");
         } else {
             j.append("\"").append(type).append("\":null");
