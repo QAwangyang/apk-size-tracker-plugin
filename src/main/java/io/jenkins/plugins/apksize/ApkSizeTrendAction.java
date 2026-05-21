@@ -285,12 +285,12 @@ public class ApkSizeTrendAction implements Action {
         html.append("function init(){\n");
         html.append("document.getElementById('loadingMsg').style.display='none';\n");
         html.append("var d=chartData;\n");
-        html.append("var hasApk=d.apk&&d.apk.buildNumbers&&d.apk.buildNumbers.length>0;\n");
-        html.append("var hasIpa=d.ipa&&d.ipa.buildNumbers&&d.ipa.buildNumbers.length>0;\n");
-        html.append("var hasHap=d.hap&&d.hap.buildNumbers&&d.hap.buildNumbers.length>0;\n");
+        html.append("var hasApk=d.apk&&d.apk.hasData;\n");
+        html.append("var hasIpa=d.ipa&&d.ipa.hasData;\n");
+        html.append("var hasHap=d.hap&&d.hap.hasData;\n");
         html.append("if(!hasApk&&!hasIpa&&!hasHap){document.getElementById('noData').style.display='block';return;}\n");
         html.append("document.getElementById('chart').style.display='block';\n");
-        html.append("var allBns=hasApk?d.apk.buildNumbers:(hasIpa?d.ipa.buildNumbers:d.hap.buildNumbers);\n");
+        html.append("var allBns=d.allBuildNumbers||[];\n");
         html.append("var legend=[],series=[];\n");
 
         // Diff banner
