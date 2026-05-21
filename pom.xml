@@ -6,13 +6,13 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.88</version>
+        <version>6.2185.v41f4290b_a_458</version>
         <relativePath/>
     </parent>
 
     <groupId>io.jenkins.plugins</groupId>
     <artifactId>apk-size-tracker</artifactId>
-    <version>1.4.5</version>
+    <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
 
     <name>APK Size Tracker</name>
@@ -39,12 +39,27 @@
     </issueManagement>
 
     <properties>
-        <jenkins.version>2.479.3</jenkins.version>
-        <java.level>17</java.level>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
+        <revision>1.4.5</revision>
+        <changelist>999999-SNAPSHOT</changelist>
+        <jenkins.baseline>2.528</jenkins.baseline>
+        <jenkins.version>${jenkins.baseline}.3</jenkins.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <hpi.strictBundledArtifacts>true</hpi.strictBundledArtifacts>
+        <ban-deprecated-stapler.skip>false</ban-deprecated-stapler.skip>
+        <ban-commons-lang-2.skip>false</ban-commons-lang-2.skip>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>io.jenkins.tools.bom</groupId>
+                <artifactId>bom-${jenkins.baseline}.x</artifactId>
+                <version>6453.v115ff6f496dd</version>
+                <scope>import</scope>
+                <type>pom</type>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <repositories>
         <repository>
@@ -56,6 +71,10 @@
     <pluginRepositories>
         <pluginRepository>
             <id>jenkins-ci-public</id>
+            <url>https://repo.jenkins-ci.org/public</url>
+        </pluginRepository>
+        <pluginRepository>
+            <id>repo.jenkins-ci.org</id>
             <url>https://repo.jenkins-ci.org/public</url>
         </pluginRepository>
     </pluginRepositories>

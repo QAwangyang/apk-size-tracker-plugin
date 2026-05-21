@@ -6,8 +6,8 @@ import hudson.model.Job;
 import hudson.model.Run;
 import hudson.model.Result;
 import hudson.tasks.Publisher;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.StaplerRequest2;
+import org.kohsuke.stapler.StaplerResponse2;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +55,7 @@ public class ApkSizeTrendAction implements Action {
 
     // ---- Main page: doIndex renders full HTML (no jelly needed) ----
 
-    public void doIndex(StaplerRequest req, StaplerResponse rsp) throws Exception {
+    public void doIndex(StaplerRequest2 req, StaplerResponse2 rsp) throws Exception {
         rsp.setContentType("text/html;charset=UTF-8");
 
         String json = buildTrendJson();
@@ -240,7 +240,7 @@ public class ApkSizeTrendAction implements Action {
 
     // ---- Compact chart widget for embedding in build page summary ----
 
-    public void doWidget(StaplerRequest req, StaplerResponse rsp) throws Exception {
+    public void doWidget(StaplerRequest2 req, StaplerResponse2 rsp) throws Exception {
         rsp.setContentType("text/html;charset=UTF-8");
 
         String json = buildTrendJson();
@@ -343,7 +343,7 @@ public class ApkSizeTrendAction implements Action {
 
     // ---- JSON data API ----
 
-    public void doData(StaplerRequest req, StaplerResponse rsp) throws Exception {
+    public void doData(StaplerRequest2 req, StaplerResponse2 rsp) throws Exception {
         long start = System.currentTimeMillis();
         String json = buildTrendJson();
         long elapsed = System.currentTimeMillis() - start;
